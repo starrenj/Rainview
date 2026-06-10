@@ -3,17 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RainView | Weather Patterns</title>
-    
+    <title>RainView | dc.js Dashboard</title>
+
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/style/dc.min.css" />
+
     <style>
         :root {
             --primary: #3498db;
-            --primary-dark: #2980b9;
             --secondary: #2c3e50;
+            --accent: #00cec9;
+            --danger: #e74c3c;
             --background: #ecf0f1;
             --surface: #ffffff;
             --text-main: #333333;
@@ -22,442 +24,132 @@
             --shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', sans-serif;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
 
-        body {
-            background-color: var(--background);
-            color: var(--text-main);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+        body { background-color: var(--background); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
 
         header {
-            background-color: var(--secondary);
-            color: white;
-            padding: 1rem 2rem;
-            box-shadow: var(--shadow);
-            display: flex;
-            align-items: center;
+            background-color: var(--secondary); color: white; padding: 1rem 2rem; box-shadow: var(--shadow);
+            display: flex; justify-content: space-between; align-items: center;
         }
 
-        header h1 {
-            font-size: 1.5rem;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+        header h1 { font-size: 1.5rem; font-weight: 600; }
+        
+        .reset-btn {
+            background: var(--primary); color: white; border: none; padding: 0.5rem 1rem;
+            border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;
         }
+        .reset-btn:hover { background: #2980b9; }
 
         .container {
-            display: grid;
+            display: grid; gap: 1.5rem; padding: 1.5rem 2rem; flex: 1;
             grid-template-columns: 1fr;
-            gap: 1.5rem;
-            padding: 1.5rem 2rem;
-            flex: 1;
         }
 
         @media (min-width: 1024px) {
-            .container {
-                grid-template-columns: 2fr 1fr;
-                grid-template-rows: auto auto;
-            }
-            .global-chart-panel {
-                grid-column: 1 / -1;
-            }
+            .container { grid-template-columns: 1fr 1fr; }
+            .full-width { grid-column: 1 / -1; }
         }
 
         .panel {
-            background: var(--surface);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            padding: 1.5rem;
-            display: flex;
-            flex-direction: column;
+            background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+            padding: 1.5rem; display: flex; flex-direction: column;
         }
 
         .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-            border-bottom: 2px solid var(--background);
-            padding-bottom: 0.5rem;
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 1rem; border-bottom: 2px solid var(--background); padding-bottom: 0.5rem;
         }
 
-        .panel-header h2 {
-            font-size: 1.1rem;
-            color: var(--secondary);
-            font-weight: 600;
-        }
+        .panel-header h2 { font-size: 1.1rem; color: var(--secondary); font-weight: 600; }
+        .help-text { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
 
-        /* Map controls styling */
-        .controls {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-        }
+        #map { height: 400px; width: 100%; border-radius: var(--radius); background: var(--background); z-index: 1; }
         
-        select {
-            padding: 0.4rem 0.8rem;
-            border: 1px solid #bdc3c7;
-            border-radius: 4px;
-            font-size: 0.9rem;
-            background: var(--surface);
-            color: var(--text-main);
-            outline: none;
-            cursor: pointer;
-            transition: border 0.2s;
-        }
-
-        select:focus {
-            border-color: var(--primary);
-        }
-
-        #map {
-            height: 400px;
-            width: 100%;
-            border-radius: var(--radius);
-            background: var(--background);
-            z-index: 1; /* Keep map under sticky headers if any */
-        }
-
-        .chart-container {
-            position: relative;
-            flex: 1;
-            min-height: 250px;
-            width: 100%;
-        }
+        .chart-container { width: 100%; }
+        /* dc.js chart overrides for responsiveness */
+        .dc-chart { width: 100%; }
+        .dc-chart svg { width: 100%; height: auto; }
 
         #loading {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(236, 240, 241, 0.9);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            font-weight: 500;
-            color: var(--secondary);
-        }
-
-        .empty-state {
-            color: var(--text-muted);
-            text-align: center;
-            margin: auto;
-            font-size: 0.95rem;
+            position: fixed; inset: 0; background: rgba(236, 240, 241, 0.95); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 1.2rem; color: var(--secondary);
         }
     </style>
 </head>
 <body>
 
-    <div id="loading">Loading and processing data...</div>
+    <div id="loading">
+        <h2>Loading Data Engine...</h2>
+        <p style="margin-top: 10px; font-size: 0.9rem; color: #7f8c8d;">Processing gauges, revisions, and reading history.</p>
+    </div>
 
     <header>
-        <h1>RainView 🌧️</h1>
+        <h1>RainView Dashboard 🌧️</h1>
+        <button class="reset-btn" onclick="resetAll()">Reset All Filters</button>
     </header>
 
     <main class="container">
-        <div class="panel global-chart-panel">
+        <div class="panel full-width">
             <div class="panel-header">
-                <h2>Average Rain Across All Gauges</h2>
+                <h2>Average Rain / Date Range Filter</h2>
+                <span class="help-text">Click and drag on the chart to filter the map and history by a date range.</span>
             </div>
-            <div class="chart-container" style="height: 250px;">
-                <canvas id="globalChart"></canvas>
-            </div>
+            <div id="time-chart" class="chart-container"></div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
-                <h2>Rainfall Map</h2>
-                <div class="controls">
-                    <label for="monthSelect" style="font-size: 0.9rem; color: var(--text-muted);">Month:</label>
-                    <select id="monthSelect"></select>
-                </div>
+                <h2>Gauge Locations & Rain Amount</h2>
+                <span class="help-text">Click a bubble to filter the dashboard by that gauge.</span>
             </div>
             <div id="map"></div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
-                <h2 id="gaugeHistoryTitle">Gauge History (Select on map)</h2>
+                <h2>Total Rainfall Trend</h2>
+                <span class="help-text">Reflects global totals or your selected gauge.</span>
             </div>
-            <div class="chart-container" id="gaugeChartContainer">
-                <div class="empty-state" id="gaugeEmptyState">Click a gauge bubble on the map to see its historical data.</div>
-                <canvas id="gaugeChart" style="display: none;"></canvas>
-            </div>
+            <div id="gauge-history-chart" class="chart-container"></div>
         </div>
     </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter2/1.5.4/crossfilter.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/dc.min.js"></script>
 
     <script>
-        // --- State Management ---
-        let gauges = {}; // gauge_id -> { id, name, lat, lon, readings: { 'YYYY-MM': amount } }
-        let allMonths = []; // Sorted list of unique YYYY-MM
-        let globalMonthlyAvg = {}; // 'YYYY-MM' -> { sum, count, avg }
-        
-        // UI Instances
+        // --- Globals ---
+        let gaugesMeta = {}; // Quick lookup for map rendering { id: {name, lat, lon} }
         let map;
-        let mapLayerGroup;
-        let globalChartInstance;
-        let gaugeChartInstance;
+        let markersLayer;
+        let ndx; // Crossfilter instance
+        let mapClickDim; // Dimension dedicated to clicking markers
 
-        // Colors for rain amounts (inches)
+        // Color scale for rain
         function getRainColor(amount) {
-            if (amount === undefined || amount === null) return '#95a5a6'; // No data / Gray
-            if (amount === 0) return '#bdc3c7'; // Zero rain
+            if (!amount || amount === 0) return '#bdc3c7';
             if (amount <= 0.5) return '#81ecec';
             if (amount <= 1.5) return '#00cec9';
             if (amount <= 3.0) return '#74b9ff';
             if (amount <= 5.0) return '#0984e3';
-            return '#2980b9'; // Heavy rain
+            return '#2980b9';
         }
 
-        // Initialize App
         async function init() {
             try {
-                // Fetch datasets concurrently
                 const [gaugesCsv, revsCsv, readingsCsv] = await Promise.all([
                     fetch('gauges.csv').then(r => r.text()),
                     fetch('gauge_revisions.csv').then(r => r.text()),
                     fetch('monthly_readings.csv').then(r => r.text())
                 ]);
 
-                // Parse with PapaParse
                 const pGauges = Papa.parse(gaugesCsv, { header: true, skipEmptyLines: true }).data;
                 const pRevs = Papa.parse(revsCsv, { header: true, skipEmptyLines: true }).data;
                 const pReadings = Papa.parse(readingsCsv, { header: true, skipEmptyLines: true }).data;
 
-                processData(pGauges, pRevs, pReadings);
-                
-                document.getElementById('loading').style.display = 'none';
-
-                setupMap();
-                setupGlobalChart();
-                populateMonthSelect();
-                
-                // Set initial map state if months exist
-                if(allMonths.length > 0) {
-                    document.getElementById('monthSelect').value = allMonths[allMonths.length - 1]; // Default to latest
-                    updateMap(allMonths[allMonths.length - 1]);
-                }
-
-                // Listen for map month changes
-                document.getElementById('monthSelect').addEventListener('change', (e) => {
-                    updateMap(e.target.value);
-                });
-
-            } catch (err) {
-                console.error(err);
-                document.getElementById('loading').innerHTML = "Failed to load data. Make sure CSV files are in the exact same directory and served via HTTP.";
-            }
-        }
-
-        function processData(gaugesData, revsData, readingsData) {
-            // 1. Initialize Gauges Dictionary
-            gaugesData.forEach(g => {
-                gauges[g.gauge_id] = {
-                    id: g.gauge_id,
-                    name: g.name,
-                    lat: null,
-                    lon: null,
-                    readings: {} // YYYY-MM -> amount
-                };
-            });
-
-            // 2. Attach Locations (Latest revision per gauge)
-            // Sort revisions by created_date descending to grab the newest locations
-            revsData.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
-            revsData.forEach(r => {
-                if (gauges[r.gauge_id] && gauges[r.gauge_id].lat === null) {
-                    gauges[r.gauge_id].lat = parseFloat(r.latitude);
-                    gauges[r.gauge_id].lon = parseFloat(r.longitude);
-                }
-            });
-
-            // 3. Process Readings
-            const monthsSet = new Set();
-            readingsData.forEach(r => {
-                if(!gauges[r.gauge_id]) return;
-                
-                const monthKey = r.reading_date.substring(0, 7); // Extract YYYY-MM
-                const amount = parseFloat(r.rain_amount);
-                
-                if (isNaN(amount)) return;
-
-                monthsSet.add(monthKey);
-                gauges[r.gauge_id].readings[monthKey] = amount;
-
-                // Accumulate for global averages
-                if (!globalMonthlyAvg[monthKey]) {
-                    globalMonthlyAvg[monthKey] = { sum: 0, count: 0 };
-                }
-                globalMonthlyAvg[monthKey].sum += amount;
-                globalMonthlyAvg[monthKey].count += 1;
-            });
-
-            allMonths = Array.from(monthsSet).sort(); // chronological sort
-
-            // Calculate global averages
-            for (let m of allMonths) {
-                globalMonthlyAvg[m].avg = globalMonthlyAvg[m].sum / globalMonthlyAvg[m].count;
-            }
-        }
-
-        // --- Visualizations ---
-
-        function setupGlobalChart() {
-            const ctx = document.getElementById('globalChart').getContext('2d');
-            
-            const labels = allMonths;
-            const data = allMonths.map(m => globalMonthlyAvg[m].avg.toFixed(2));
-
-            globalChartInstance = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Average Rain (inches)',
-                        data: data,
-                        backgroundColor: '#3498db',
-                        borderRadius: 4
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            title: { display: true, text: 'Inches' }
-                        },
-                        x: {
-                            grid: { display: false }
-                        }
-                    }
-                }
-            });
-        }
-
-        function populateMonthSelect() {
-            const select = document.getElementById('monthSelect');
-            allMonths.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m;
-                select.appendChild(opt);
-            });
-        }
-
-        function setupMap() {
-            // Center roughly on Arizona given typical Rainlog data
-            map = L.map('map').setView([33.45, -112.07], 6);
-            
-            // Add OpenStreetMap flat style tiles
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
-            }).addTo(map);
-
-            mapLayerGroup = L.layerGroup().addTo(map);
-        }
-
-        function updateMap(selectedMonth) {
-            mapLayerGroup.clearLayers();
-
-            Object.values(gauges).forEach(g => {
-                if (g.lat === null || g.lon === null || isNaN(g.lat) || isNaN(g.lon)) return;
-
-                const amount = g.readings[selectedMonth];
-                const hasData = amount !== undefined;
-                
-                // Radius mapping based on presence of data and quantity
-                const radius = !hasData ? 3 : (amount === 0 ? 4 : Math.min(6 + (amount * 2), 15));
-                const color = getRainColor(amount);
-
-                const circle = L.circleMarker([g.lat, g.lon], {
-                    radius: radius,
-                    fillColor: color,
-                    color: hasData && amount > 0 ? '#2c3e50' : '#bdc3c7', // darker border if rain occurred
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: hasData ? 0.8 : 0.4
-                });
-
-                // Tooltip
-                const tooltipText = `<b>${g.name}</b><br/>Rain: ${hasData ? amount + ' in' : 'No data'}`;
-                circle.bindTooltip(tooltipText);
-
-                // Click event to show history
-                circle.on('click', () => showGaugeHistory(g.id));
-
-                circle.addTo(mapLayerGroup);
-            });
-        }
-
-        function showGaugeHistory(gaugeId) {
-            const gauge = gauges[gaugeId];
-            document.getElementById('gaugeHistoryTitle').textContent = `History: ${gauge.name}`;
-            document.getElementById('gaugeEmptyState').style.display = 'none';
-            document.getElementById('gaugeChart').style.display = 'block';
-
-            // Filter history for only months where this gauge reported
-            const labels = [];
-            const data = [];
-            
-            allMonths.forEach(m => {
-                if (gauge.readings[m] !== undefined) {
-                    labels.push(m);
-                    data.push(gauge.readings[m]);
-                }
-            });
-
-            const ctx = document.getElementById('gaugeChart').getContext('2d');
-
-            if (gaugeChartInstance) {
-                gaugeChartInstance.destroy();
-            }
-
-            gaugeChartInstance = new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Rain (inches)',
-                        data: data,
-                        borderColor: '#00cec9',
-                        backgroundColor: 'rgba(0, 206, 201, 0.1)',
-                        borderWidth: 2,
-                        pointRadius: 3,
-                        pointBackgroundColor: '#00cec9',
-                        fill: true,
-                        tension: 0.3
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: { display: false }
-                    },
-                    scales: {
-                        y: { beginAtZero: true }
-                    }
-                }
-            });
-        }
-
-        // Start 
-        window.addEventListener('DOMContentLoaded', init);
-    </script>
-</body>
-</html>
+                processData(pG
