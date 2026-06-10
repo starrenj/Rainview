@@ -3,93 +3,136 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RainView | dc.js Dashboard</title>
+    <title>RainView | Weather Patterns</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/style/dc.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/noUiSlider/15.7.1/nouislider.min.css" />
 
     <style>
         :root {
-            --primary: #3498db; --secondary: #2c3e50; --background: #ecf0f1;
-            --surface: #ffffff; --text-main: #333333; --radius: 8px;
-            --shadow: 0 4px 6px rgba(0,0,0,0.05);
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2c3e50;
+            --accent: #00cec9;
+            --background: #f4f7f6;
+            --surface: #ffffff;
+            --text-main: #2d3436;
+            --text-muted: #636e72;
+            --radius: 10px;
+            --shadow: 0 4px 12px rgba(0,0,0,0.05);
         }
+
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
         body { background-color: var(--background); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
-        
-        header { background-color: var(--secondary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
-        .reset-btn { background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
-        .reset-btn:hover { background: #2980b9; }
 
-        .container { display: grid; gap: 1.5rem; padding: 1.5rem 2rem; flex: 1; grid-template-columns: 1fr; }
-        @media (min-width: 1024px) { .container { grid-template-columns: 1fr 1fr; } .full-width { grid-column: 1 / -1; } }
+        header {
+            background-color: var(--surface);
+            border-bottom: 1px solid #e1e8ed;
+            padding: 1.2rem 2rem;
+            display: flex; justify-content: space-between; align-items: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+        }
+        header h1 { font-size: 1.4rem; font-weight: 600; color: var(--secondary); }
+        .reset-btn {
+            background: #e1e8ed; color: var(--secondary); border: none; padding: 0.5rem 1rem;
+            border-radius: 6px; cursor: pointer; font-weight: 500; transition: background 0.2s;
+        }
+        .reset-btn:hover { background: #cbd5e1; }
 
-        .panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; }
-        .panel-header { margin-bottom: 1rem; border-bottom: 2px solid var(--background); padding-bottom: 0.5rem; }
-        .panel-header h2 { font-size: 1.1rem; color: var(--secondary); }
-        .help-text { font-size: 0.85rem; color: #7f8c8d; }
+        .container {
+            display: grid; gap: 1.5rem; padding: 1.5rem 2rem; flex: 1;
+            grid-template-columns: 1fr;
+        }
 
-        #map { height: 400px; width: 100%; border-radius: var(--radius); background: var(--background); z-index: 1; }
-        .chart-container { width: 100%; }
-        .dc-chart { width: 100%; }
+        @media (min-width: 1024px) {
+            .container { grid-template-columns: 1fr 1fr; }
+            .full-width { grid-column: 1 / -1; }
+        }
+
+        .panel {
+            background: var(--surface); border-radius: var(--radius);
+            box-shadow: var(--shadow); padding: 1.5rem; display: flex; flex-direction: column;
+        }
+
+        .panel-header { margin-bottom: 1rem; }
+        .panel-header h2 { font-size: 1.1rem; color: var(--secondary); margin-bottom: 0.2rem; }
+        .help-text { font-size: 0.85rem; color: var(--text-muted); }
+
+        #map { height: 400px; width: 100%; border-radius: 8px; background: #eaeaeb; z-index: 1; }
+        .chart-wrapper { position: relative; width: 100%; height: 250px; }
+
+        /* Slider Styles */
+        .slider-container { padding: 0 15px 25px 15px; margin-top: 10px; }
+        .noUi-connect { background: var(--primary); }
+        .noUi-handle {
+            border-radius: 50%; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            background: white; border: 2px solid var(--primary);
+        }
+        .noUi-handle:before, .noUi-handle:after { display: none; }
+        .slider-labels { display: flex; justify-content: space-between; margin-top: 10px; font-size: 0.85rem; color: var(--text-muted); font-weight: 500; }
 
         #loading {
-            position: fixed; inset: 0; background: rgba(236, 240, 241, 0.98); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem;
+            position: fixed; inset: 0; background: rgba(255, 255, 255, 0.95); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
-        .error-msg { color: #e74c3c; margin-top: 1rem; font-weight: 500; max-width: 600px; background: #fadbd8; padding: 1rem; border-radius: 8px; display: none; }
+        .spinner {
+            width: 40px; height: 40px; border: 4px solid #e1e8ed; border-top: 4px solid var(--primary);
+            border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 1rem;
+        }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .error-msg { color: #e74c3c; margin-top: 1rem; font-weight: 500; display: none; background: #fadbd8; padding: 1rem; border-radius: 8px;}
     </style>
 </head>
 <body>
 
     <div id="loading">
-        <h2 id="loading-title">Initializing Dashboard...</h2>
-        <p id="loading-desc" style="margin-top: 10px; color: #7f8c8d; font-size: 1.1rem;">Starting up...</p>
+        <div class="spinner" id="loading-spinner"></div>
+        <h2 id="loading-text" style="color: var(--secondary);">Loading Weather Data...</h2>
         <div id="error-box" class="error-msg"></div>
     </div>
 
     <header>
-        <h1>RainView Dashboard 🌧️</h1>
-        <button class="reset-btn" onclick="resetAll()">Reset Filters</button>
+        <h1>RainView 🌧️</h1>
+        <button class="reset-btn" onclick="resetApp()">Reset Selection</button>
     </header>
 
     <main class="container">
         <div class="panel full-width">
             <div class="panel-header">
-                <h2>Average Rain / Date Range Filter</h2>
-                <span class="help-text">Click and drag on the chart to filter the map and history by a date range.</span>
+                <h2>Average Global Rainfall & Date Filter</h2>
+                <div class="help-text">Drag the handles to filter the map and gauge history by a specific date range.</div>
             </div>
-            <div id="time-chart" class="chart-container"></div>
+            <div class="slider-container">
+                <div id="date-slider"></div>
+                <div class="slider-labels">
+                    <span id="slider-start-label">Start Date</span>
+                    <span id="slider-end-label">End Date</span>
+                </div>
+            </div>
+            <div class="chart-wrapper" style="height: 200px;">
+                <canvas id="globalChart"></canvas>
+            </div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
                 <h2>Gauge Locations</h2>
-                <span class="help-text">Click a bubble to filter by gauge.</span>
+                <div class="help-text">Click a bubble to see its historical rain trend.</div>
             </div>
             <div id="map"></div>
         </div>
 
         <div class="panel">
             <div class="panel-header">
-                <h2>Total Rainfall Trend</h2>
+                <h2 id="history-title">Gauge History</h2>
+                <div class="help-text">Select a gauge on the map to view data.</div>
             </div>
-            <div id="gauge-history-chart" class="chart-container"></div>
+            <div class="chart-wrapper">
+                <canvas id="historyChart"></canvas>
+            </div>
         </div>
     </main>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/6.7.0/d3.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crossfilter2/1.5.4/crossfilter.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/dc.min.js"></script>
-
-    <script>
-        let gaugesMeta = {}; 
-        let map, markersLayer, ndx, mapClickDim;
-
-        // Async sleep to allow browser to paint UI updates instead of freezing
-        const yieldThread = () => new Promise(r => setTimeout(r, 50));
-
-        function setStatus(msg) {
+    <script src="
