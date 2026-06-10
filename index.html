@@ -3,438 +3,329 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RainView - Gardener's Rain Pattern Dashboard</title>
+    <title>RainView | Weather Patterns</title>
     
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
     <style>
         :root {
-            /* Cool Flat 2.0 Colors */
             --primary: #3498db;
             --primary-dark: #2980b9;
-            --secondary: #2ecc71;
-            --bg-color: #ecf0f1;
+            --secondary: #2c3e50;
+            --background: #ecf0f1;
             --surface: #ffffff;
-            --text-main: #2c3e50;
-            --text-light: #7f8c8d;
-            --border: #bdc3c7;
-            --shadow: 0 4px 6px rgba(0,0,0,0.1);
-            --shadow-hover: 0 8px 15px rgba(0,0,0,0.15);
-            --border-radius: 8px;
+            --text-main: #333333;
+            --text-muted: #7f8c8d;
+            --radius: 8px;
+            --shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
         }
 
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            font-family: 'Inter', sans-serif;
         }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-color);
+            background-color: var(--background);
             color: var(--text-main);
-            line-height: 1.6;
-            padding: 20px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            min-height: 100vh;
         }
 
         header {
-            background-color: var(--surface);
-            padding: 20px 30px;
-            border-radius: var(--border-radius);
+            background-color: var(--secondary);
+            color: white;
+            padding: 1rem 2rem;
             box-shadow: var(--shadow);
-            margin-bottom: 20px;
             display: flex;
-            justify-content: space-between;
             align-items: center;
         }
 
         header h1 {
-            color: var(--primary-dark);
-            font-size: 1.8rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            font-size: 1.5rem;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         .container {
-            display: flex;
-            gap: 20px;
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.5rem;
+            padding: 1.5rem 2rem;
             flex: 1;
-            min-height: 0;
         }
 
-        .left-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-            min-width: 0;
+        @media (min-width: 1024px) {
+            .container {
+                grid-template-columns: 2fr 1fr;
+                grid-template-rows: auto auto;
+            }
+            .global-chart-panel {
+                grid-column: 1 / -1;
+            }
         }
 
-        .right-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            background-color: var(--surface);
-            border-radius: var(--border-radius);
+        .panel {
+            background: var(--surface);
+            border-radius: var(--radius);
             box-shadow: var(--shadow);
-            padding: 20px;
-            min-width: 0;
-        }
-
-        .card {
-            background-color: var(--surface);
-            border-radius: var(--border-radius);
-            box-shadow: var(--shadow);
-            padding: 20px;
+            padding: 1.5rem;
             display: flex;
             flex-direction: column;
         }
 
-        .chart-container {
-            flex: 1;
-            position: relative;
-            min-height: 250px;
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid var(--background);
+            padding-bottom: 0.5rem;
+        }
+
+        .panel-header h2 {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            font-weight: 600;
+        }
+
+        /* Map controls styling */
+        .controls {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+        
+        select {
+            padding: 0.4rem 0.8rem;
+            border: 1px solid #bdc3c7;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: var(--surface);
+            color: var(--text-main);
+            outline: none;
+            cursor: pointer;
+            transition: border 0.2s;
+        }
+
+        select:focus {
+            border-color: var(--primary);
         }
 
         #map {
+            height: 400px;
+            width: 100%;
+            border-radius: var(--radius);
+            background: var(--background);
+            z-index: 1; /* Keep map under sticky headers if any */
+        }
+
+        .chart-container {
+            position: relative;
             flex: 1;
-            border-radius: var(--border-radius);
-            z-index: 1;
+            min-height: 250px;
+            width: 100%;
         }
 
-        .controls {
-            margin-bottom: 15px;
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        select, button {
-            padding: 10px 15px;
-            border: 1px solid var(--border);
-            border-radius: var(--border-radius);
-            background-color: var(--surface);
-            font-family: inherit;
-            font-size: 1rem;
-            color: var(--text-main);
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        select:focus, button:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-        }
-
-        button {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            font-weight: 500;
-        }
-
-        button:hover {
-            background-color: var(--primary-dark);
-            box-shadow: var(--shadow-hover);
-        }
-
-        .loading {
+        #loading {
             position: fixed;
             top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(255,255,255,0.9);
+            background: rgba(236, 240, 241, 0.9);
             z-index: 9999;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
+            justify-content: center;
             font-size: 1.5rem;
-            color: var(--primary-dark);
+            font-weight: 500;
+            color: var(--secondary);
         }
 
-        .spinner {
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid var(--primary);
-            border-radius: 50%;
-            width: 50px;
-            height: 50px;
-            animation: spin 1s linear infinite;
-            margin-bottom: 20px;
-        }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        h2 {
-            margin-bottom: 15px;
-            font-size: 1.2rem;
-            color: var(--text-main);
-            border-bottom: 2px solid var(--bg-color);
-            padding-bottom: 10px;
-        }
-
-        /* Accessible visually hidden class */
-        .sr-only {
-            position: absolute;
-            width: 1px;
-            height: 1px;
-            padding: 0;
-            margin: -1px;
-            overflow: hidden;
-            clip: rect(0, 0, 0, 0);
-            white-space: nowrap;
-            border-width: 0;
-        }
-
-        @media (max-width: 900px) {
-            .container {
-                flex-direction: column;
-            }
-            .left-panel, .right-panel {
-                flex: none;
-                height: 500px;
-            }
+        .empty-state {
+            color: var(--text-muted);
+            text-align: center;
+            margin: auto;
+            font-size: 0.95rem;
         }
     </style>
 </head>
 <body>
 
-    <div id="loading" class="loading">
-        <div class="spinner"></div>
-        <div id="loading-text">Loading data from CSV files...</div>
-    </div>
+    <div id="loading">Loading and processing data...</div>
 
     <header>
-        <h1>
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M20 16.2A4.5 4.5 0 0 0 17.5 8h-1.8A7 7 0 1 0 4 14.9"></path>
-                <path d="M16 14v6"></path>
-                <path d="M8 14v6"></path>
-                <path d="M12 16v6"></path>
-            </svg>
-            RainView
-        </h1>
-        <div class="controls">
-            <label for="month-select" class="sr-only">Select Month</label>
-            <select id="month-select">
-                <option value="all">All Time History</option>
-                </select>
-        </div>
+        <h1>RainView 🌧️</h1>
     </header>
 
-    <div class="container">
-        <div class="left-panel">
-            <div class="card" style="flex: 1;">
-                <h2>Overall Average Monthly Rain</h2>
-                <div class="chart-container">
-                    <canvas id="overallChart"></canvas>
-                </div>
+    <main class="container">
+        <div class="panel global-chart-panel">
+            <div class="panel-header">
+                <h2>Average Rain Across All Gauges</h2>
             </div>
-            <div class="card" style="flex: 1;">
-                <h2 id="gauge-detail-title">Select a Gauge on the Map</h2>
-                <div class="chart-container">
-                    <canvas id="gaugeChart"></canvas>
-                </div>
+            <div class="chart-container" style="height: 250px;">
+                <canvas id="globalChart"></canvas>
             </div>
         </div>
 
-        <div class="right-panel">
-            <h2>Gauge Map & Rain Amounts</h2>
+        <div class="panel">
+            <div class="panel-header">
+                <h2>Rainfall Map</h2>
+                <div class="controls">
+                    <label for="monthSelect" style="font-size: 0.9rem; color: var(--text-muted);">Month:</label>
+                    <select id="monthSelect"></select>
+                </div>
+            </div>
             <div id="map"></div>
         </div>
-    </div>
+
+        <div class="panel">
+            <div class="panel-header">
+                <h2 id="gaugeHistoryTitle">Gauge History (Select on map)</h2>
+            </div>
+            <div class="chart-container" id="gaugeChartContainer">
+                <div class="empty-state" id="gaugeEmptyState">Click a gauge bubble on the map to see its historical data.</div>
+                <canvas id="gaugeChart" style="display: none;"></canvas>
+            </div>
+        </div>
+    </main>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
     <script>
-        // State management
-        const state = {
-            gauges: new Map(), // gauge_id -> gauge info
-            readings: [],
-            months: new Set(),
-            selectedMonth: 'all',
-            selectedGauge: null,
-            mapMarkers: []
-        };
+        // --- State Management ---
+        let gauges = {}; // gauge_id -> { id, name, lat, lon, readings: { 'YYYY-MM': amount } }
+        let allMonths = []; // Sorted list of unique YYYY-MM
+        let globalMonthlyAvg = {}; // 'YYYY-MM' -> { sum, count, avg }
+        
+        // UI Instances
+        let map;
+        let mapLayerGroup;
+        let globalChartInstance;
+        let gaugeChartInstance;
 
-        // Chart instances
-        let overallChartInstance = null;
-        let gaugeChartInstance = null;
-        let map = null;
+        // Colors for rain amounts (inches)
+        function getRainColor(amount) {
+            if (amount === undefined || amount === null) return '#95a5a6'; // No data / Gray
+            if (amount === 0) return '#bdc3c7'; // Zero rain
+            if (amount <= 0.5) return '#81ecec';
+            if (amount <= 1.5) return '#00cec9';
+            if (amount <= 3.0) return '#74b9ff';
+            if (amount <= 5.0) return '#0984e3';
+            return '#2980b9'; // Heavy rain
+        }
 
         // Initialize App
         async function init() {
             try {
-                updateLoadingText("Loading Gauges...");
-                const gaugesData = await fetchCSV('gauges.csv');
-                
-                updateLoadingText("Loading Gauge Revisions...");
-                const revisionsData = await fetchCSV('gauge_revisions.csv');
-                
-                updateLoadingText("Loading Monthly Readings...");
-                const readingsData = await fetchCSV('monthly_readings.csv');
+                // Fetch datasets concurrently
+                const [gaugesCsv, revsCsv, readingsCsv] = await Promise.all([
+                    fetch('gauges.csv').then(r => r.text()),
+                    fetch('gauge_revisions.csv').then(r => r.text()),
+                    fetch('monthly_readings.csv').then(r => r.text())
+                ]);
 
-                processData(gaugesData, revisionsData, readingsData);
-                
-                initMap();
-                populateMonthSelect();
-                renderOverallChart();
-                renderMap();
+                // Parse with PapaParse
+                const pGauges = Papa.parse(gaugesCsv, { header: true, skipEmptyLines: true }).data;
+                const pRevs = Papa.parse(revsCsv, { header: true, skipEmptyLines: true }).data;
+                const pReadings = Papa.parse(readingsCsv, { header: true, skipEmptyLines: true }).data;
 
+                processData(pGauges, pRevs, pReadings);
+                
                 document.getElementById('loading').style.display = 'none';
-            } catch (error) {
-                console.error("Error loading data:", error);
-                document.getElementById('loading-text').innerText = "Error loading data. Make sure gauges.csv, gauge_revisions.csv, and monthly_readings.csv are available on the server.";
-                document.querySelector('.spinner').style.display = 'none';
+
+                setupMap();
+                setupGlobalChart();
+                populateMonthSelect();
+                
+                // Set initial map state if months exist
+                if(allMonths.length > 0) {
+                    document.getElementById('monthSelect').value = allMonths[allMonths.length - 1]; // Default to latest
+                    updateMap(allMonths[allMonths.length - 1]);
+                }
+
+                // Listen for map month changes
+                document.getElementById('monthSelect').addEventListener('change', (e) => {
+                    updateMap(e.target.value);
+                });
+
+            } catch (err) {
+                console.error(err);
+                document.getElementById('loading').innerHTML = "Failed to load data. Make sure CSV files are in the exact same directory and served via HTTP.";
             }
         }
 
-        // Fetch wrapper using PapaParse
-        function fetchCSV(filename) {
-            return new Promise((resolve, reject) => {
-                Papa.parse(filename, {
-                    download: true,
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        resolve(results.data);
-                    },
-                    error: function(error) {
-                        reject(error);
-                    }
-                });
-            });
-        }
-
-        function updateLoadingText(text) {
-            document.getElementById('loading-text').innerText = text;
-        }
-
-        // Process and normalize data
-        function processData(gauges, revisions, readings) {
-            // Map gauges
-            gauges.forEach(g => {
-                state.gauges.set(g.gauge_id, {
+        function processData(gaugesData, revsData, readingsData) {
+            // 1. Initialize Gauges Dictionary
+            gaugesData.forEach(g => {
+                gauges[g.gauge_id] = {
                     id: g.gauge_id,
                     name: g.name,
-                    status: g.status,
                     lat: null,
-                    lng: null,
-                    history: []
-                });
-            });
-
-            // Apply latest revisions to get locations
-            revisions.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-            revisions.forEach(rev => {
-                if (state.gauges.has(rev.gauge_id) && rev.latitude && rev.longitude) {
-                    let g = state.gauges.get(rev.gauge_id);
-                    g.lat = rev.latitude;
-                    g.lng = rev.longitude;
-                }
-            });
-
-            // Process readings
-            readings.forEach(r => {
-                if (!r.reading_date || r.rain_amount === null || r.rain_amount === undefined) return;
-                
-                const dateStr = r.reading_date.substring(0, 7); // YYYY-MM
-                state.months.add(dateStr);
-                
-                const readingObj = {
-                    gauge_id: r.gauge_id,
-                    month: dateStr,
-                    amount: parseFloat(r.rain_amount)
+                    lon: null,
+                    readings: {} // YYYY-MM -> amount
                 };
+            });
+
+            // 2. Attach Locations (Latest revision per gauge)
+            // Sort revisions by created_date descending to grab the newest locations
+            revsData.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+            revsData.forEach(r => {
+                if (gauges[r.gauge_id] && gauges[r.gauge_id].lat === null) {
+                    gauges[r.gauge_id].lat = parseFloat(r.latitude);
+                    gauges[r.gauge_id].lon = parseFloat(r.longitude);
+                }
+            });
+
+            // 3. Process Readings
+            const monthsSet = new Set();
+            readingsData.forEach(r => {
+                if(!gauges[r.gauge_id]) return;
                 
-                state.readings.push(readingObj);
+                const monthKey = r.reading_date.substring(0, 7); // Extract YYYY-MM
+                const amount = parseFloat(r.rain_amount);
+                
+                if (isNaN(amount)) return;
 
-                if (state.gauges.has(r.gauge_id)) {
-                    state.gauges.get(r.gauge_id).history.push(readingObj);
+                monthsSet.add(monthKey);
+                gauges[r.gauge_id].readings[monthKey] = amount;
+
+                // Accumulate for global averages
+                if (!globalMonthlyAvg[monthKey]) {
+                    globalMonthlyAvg[monthKey] = { sum: 0, count: 0 };
                 }
+                globalMonthlyAvg[monthKey].sum += amount;
+                globalMonthlyAvg[monthKey].count += 1;
             });
 
-            // Remove gauges without locations or data
-            for (let [id, g] of state.gauges.entries()) {
-                if (!g.lat || !g.lng || g.history.length === 0) {
-                    state.gauges.delete(id);
-                }
+            allMonths = Array.from(monthsSet).sort(); // chronological sort
+
+            // Calculate global averages
+            for (let m of allMonths) {
+                globalMonthlyAvg[m].avg = globalMonthlyAvg[m].sum / globalMonthlyAvg[m].count;
             }
         }
 
-        // Setup Leaflet Map
-        function initMap() {
-            // Default center roughly on Arizona (based on typical Rainlog data)
-            map = L.map('map').setView([32.2226, -110.9747], 8);
+        // --- Visualizations ---
+
+        function setupGlobalChart() {
+            const ctx = document.getElementById('globalChart').getContext('2d');
             
-            // CartoDB Positron base map (cool flat style)
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-                subdomains: 'abcd',
-                maxZoom: 19
-            }).addTo(map);
+            const labels = allMonths;
+            const data = allMonths.map(m => globalMonthlyAvg[m].avg.toFixed(2));
 
-            // Fit bounds to actual data if available
-            if(state.gauges.size > 0) {
-                const bounds = L.latLngBounds(Array.from(state.gauges.values()).map(g => [g.lat, g.lng]));
-                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
-            }
-        }
-
-        function populateMonthSelect() {
-            const select = document.getElementById('month-select');
-            const sortedMonths = Array.from(state.months).sort((a, b) => b.localeCompare(a)); // Descending
-            
-            sortedMonths.forEach(m => {
-                const option = document.createElement('option');
-                option.value = m;
-                option.textContent = m;
-                select.appendChild(option);
-            });
-
-            select.addEventListener('change', (e) => {
-                state.selectedMonth = e.target.value;
-                renderMap();
-            });
-        }
-
-        // Render Overall Average Rain Chart
-        function renderOverallChart() {
-            const monthlySums = {};
-            const monthlyCounts = {};
-
-            state.readings.forEach(r => {
-                if (!monthlySums[r.month]) {
-                    monthlySums[r.month] = 0;
-                    monthlyCounts[r.month] = 0;
-                }
-                monthlySums[r.month] += r.amount;
-                monthlyCounts[r.month] += 1;
-            });
-
-            const sortedMonths = Object.keys(monthlySums).sort();
-            const averages = sortedMonths.map(m => monthlySums[m] / monthlyCounts[m]);
-
-            const ctx = document.getElementById('overallChart').getContext('2d');
-            
-            overallChartInstance = new Chart(ctx, {
+            globalChartInstance = new Chart(ctx, {
                 type: 'bar',
                 data: {
-                    labels: sortedMonths,
+                    labels: labels,
                     datasets: [{
                         label: 'Average Rain (inches)',
-                        data: averages,
+                        data: data,
                         backgroundColor: '#3498db',
                         borderRadius: 4
                     }]
@@ -443,113 +334,113 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
-                        tooltip: { mode: 'index', intersect: false }
+                        legend: { display: false }
                     },
                     scales: {
                         y: {
                             beginAtZero: true,
-                            title: { display: true, text: 'Rain Amount' }
+                            title: { display: true, text: 'Inches' }
                         },
                         x: {
-                            title: { display: true, text: 'Month' }
+                            grid: { display: false }
                         }
                     }
                 }
             });
         }
 
-        // Determine color based on rain amount (Cool color scale)
-        function getColor(rainAmount) {
-            return rainAmount > 4 ? '#08306b' :
-                   rainAmount > 3 ? '#2879b9' :
-                   rainAmount > 2 ? '#4eb3d3' :
-                   rainAmount > 1 ? '#7bccc4' :
-                   rainAmount > 0.1 ? '#a8ddb5' :
-                   '#ccebc5';
-        }
-
-        // Render Map markers
-        function renderMap() {
-            // Clear existing markers
-            state.mapMarkers.forEach(m => map.removeLayer(m));
-            state.mapMarkers = [];
-
-            const isAllTime = state.selectedMonth === 'all';
-
-            state.gauges.forEach(g => {
-                let displayAmount = 0;
-                let hasDataForMonth = false;
-
-                if (!isAllTime) {
-                    const monthReading = g.history.find(h => h.month === state.selectedMonth);
-                    if (monthReading) {
-                        displayAmount = monthReading.amount;
-                        hasDataForMonth = true;
-                    }
-                }
-
-                // If specific month is selected and gauge has no data, skip or show small gray
-                if (!isAllTime && !hasDataForMonth) return;
-
-                const radius = isAllTime ? 5 : Math.max(5, Math.min(15, displayAmount * 3 + 5));
-                const color = isAllTime ? '#3498db' : getColor(displayAmount);
-
-                const marker = L.circleMarker([g.lat, g.lng], {
-                    radius: radius,
-                    fillColor: color,
-                    color: '#fff',
-                    weight: 1,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                });
-
-                const tooltipContent = isAllTime 
-                    ? `<b>${g.name}</b><br>Click to view history`
-                    : `<b>${g.name}</b><br>Rain: ${displayAmount.toFixed(2)}"`;
-
-                marker.bindTooltip(tooltipContent);
-                
-                marker.on('click', () => {
-                    selectGauge(g.id);
-                });
-
-                marker.addTo(map);
-                state.mapMarkers.push(marker);
+        function populateMonthSelect() {
+            const select = document.getElementById('monthSelect');
+            allMonths.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
             });
         }
 
-        // Handle gauge selection
-        function selectGauge(id) {
-            const gauge = state.gauges.get(id);
-            if (!gauge) return;
+        function setupMap() {
+            // Center roughly on Arizona given typical Rainlog data
+            map = L.map('map').setView([33.45, -112.07], 6);
+            
+            // Add OpenStreetMap flat style tiles
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO'
+            }).addTo(map);
 
-            state.selectedGauge = id;
-            document.getElementById('gauge-detail-title').innerText = `History: ${gauge.name}`;
+            mapLayerGroup = L.layerGroup().addTo(map);
+        }
 
-            const sortedHistory = gauge.history.sort((a, b) => a.month.localeCompare(b.month));
-            const labels = sortedHistory.map(h => h.month);
-            const data = sortedHistory.map(h => h.amount);
+        function updateMap(selectedMonth) {
+            mapLayerGroup.clearLayers();
+
+            Object.values(gauges).forEach(g => {
+                if (g.lat === null || g.lon === null || isNaN(g.lat) || isNaN(g.lon)) return;
+
+                const amount = g.readings[selectedMonth];
+                const hasData = amount !== undefined;
+                
+                // Radius mapping based on presence of data and quantity
+                const radius = !hasData ? 3 : (amount === 0 ? 4 : Math.min(6 + (amount * 2), 15));
+                const color = getRainColor(amount);
+
+                const circle = L.circleMarker([g.lat, g.lon], {
+                    radius: radius,
+                    fillColor: color,
+                    color: hasData && amount > 0 ? '#2c3e50' : '#bdc3c7', // darker border if rain occurred
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: hasData ? 0.8 : 0.4
+                });
+
+                // Tooltip
+                const tooltipText = `<b>${g.name}</b><br/>Rain: ${hasData ? amount + ' in' : 'No data'}`;
+                circle.bindTooltip(tooltipText);
+
+                // Click event to show history
+                circle.on('click', () => showGaugeHistory(g.id));
+
+                circle.addTo(mapLayerGroup);
+            });
+        }
+
+        function showGaugeHistory(gaugeId) {
+            const gauge = gauges[gaugeId];
+            document.getElementById('gaugeHistoryTitle').textContent = `History: ${gauge.name}`;
+            document.getElementById('gaugeEmptyState').style.display = 'none';
+            document.getElementById('gaugeChart').style.display = 'block';
+
+            // Filter history for only months where this gauge reported
+            const labels = [];
+            const data = [];
+            
+            allMonths.forEach(m => {
+                if (gauge.readings[m] !== undefined) {
+                    labels.push(m);
+                    data.push(gauge.readings[m]);
+                }
+            });
+
+            const ctx = document.getElementById('gaugeChart').getContext('2d');
 
             if (gaugeChartInstance) {
                 gaugeChartInstance.destroy();
             }
 
-            const ctx = document.getElementById('gaugeChart').getContext('2d');
             gaugeChartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
                     datasets: [{
-                        label: 'Rainfall (inches)',
+                        label: 'Rain (inches)',
                         data: data,
-                        borderColor: '#2ecc71',
-                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                        borderColor: '#00cec9',
+                        backgroundColor: 'rgba(0, 206, 201, 0.1)',
                         borderWidth: 2,
+                        pointRadius: 3,
+                        pointBackgroundColor: '#00cec9',
                         fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointBackgroundColor: '#2ecc71'
+                        tension: 0.3
                     }]
                 },
                 options: {
@@ -565,9 +456,8 @@
             });
         }
 
-        // Run application
+        // Start 
         window.addEventListener('DOMContentLoaded', init);
-
     </script>
 </body>
 </html>
