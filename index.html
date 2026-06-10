@@ -6,7 +6,6 @@
     <title>RainView | dc.js Dashboard</title>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-    
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/style/dc.min.css" />
 
@@ -14,80 +13,50 @@
         :root {
             --primary: #3498db;
             --secondary: #2c3e50;
-            --accent: #00cec9;
-            --danger: #e74c3c;
             --background: #ecf0f1;
             --surface: #ffffff;
             --text-main: #333333;
-            --text-muted: #7f8c8d;
             --radius: 8px;
-            --shadow: 0 4px 6px rgba(0,0,0,0.05), 0 1px 3px rgba(0,0,0,0.1);
+            --shadow: 0 4px 6px rgba(0,0,0,0.05);
         }
 
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-
         body { background-color: var(--background); color: var(--text-main); display: flex; flex-direction: column; min-height: 100vh; }
 
-        header {
-            background-color: var(--secondary); color: white; padding: 1rem 2rem; box-shadow: var(--shadow);
-            display: flex; justify-content: space-between; align-items: center;
-        }
-
-        header h1 { font-size: 1.5rem; font-weight: 600; }
-        
-        .reset-btn {
-            background: var(--primary); color: white; border: none; padding: 0.5rem 1rem;
-            border-radius: 4px; cursor: pointer; font-size: 0.9rem; transition: background 0.2s;
-        }
+        header { background-color: var(--secondary); color: white; padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; }
+        .reset-btn { background: var(--primary); color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
         .reset-btn:hover { background: #2980b9; }
 
-        .container {
-            display: grid; gap: 1.5rem; padding: 1.5rem 2rem; flex: 1;
-            grid-template-columns: 1fr;
-        }
+        .container { display: grid; gap: 1.5rem; padding: 1.5rem 2rem; flex: 1; grid-template-columns: 1fr; }
+        @media (min-width: 1024px) { .container { grid-template-columns: 1fr 1fr; } .full-width { grid-column: 1 / -1; } }
 
-        @media (min-width: 1024px) {
-            .container { grid-template-columns: 1fr 1fr; }
-            .full-width { grid-column: 1 / -1; }
-        }
-
-        .panel {
-            background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-            padding: 1.5rem; display: flex; flex-direction: column;
-        }
-
-        .panel-header {
-            display: flex; justify-content: space-between; align-items: center;
-            margin-bottom: 1rem; border-bottom: 2px solid var(--background); padding-bottom: 0.5rem;
-        }
-
-        .panel-header h2 { font-size: 1.1rem; color: var(--secondary); font-weight: 600; }
-        .help-text { font-size: 0.85rem; color: var(--text-muted); font-weight: 400; }
+        .panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 1.5rem; }
+        .panel-header { margin-bottom: 1rem; border-bottom: 2px solid var(--background); padding-bottom: 0.5rem; }
+        .panel-header h2 { font-size: 1.1rem; color: var(--secondary); }
+        .help-text { font-size: 0.85rem; color: #7f8c8d; }
 
         #map { height: 400px; width: 100%; border-radius: var(--radius); background: var(--background); z-index: 1; }
-        
         .chart-container { width: 100%; }
-        /* dc.js chart overrides for responsiveness */
         .dc-chart { width: 100%; }
-        .dc-chart svg { width: 100%; height: auto; }
 
         #loading {
-            position: fixed; inset: 0; background: rgba(236, 240, 241, 0.95); z-index: 9999;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 1.2rem; color: var(--secondary);
+            position: fixed; inset: 0; background: rgba(236, 240, 241, 0.98); z-index: 9999;
+            display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 2rem;
         }
+        .error-msg { color: #e74c3c; margin-top: 1rem; font-weight: 500; max-width: 600px; }
     </style>
 </head>
 <body>
 
     <div id="loading">
-        <h2>Loading Data Engine...</h2>
-        <p style="margin-top: 10px; font-size: 0.9rem; color: #7f8c8d;">Processing gauges, revisions, and reading history.</p>
+        <h2 id="loading-title">Loading Data Engine...</h2>
+        <p id="loading-desc" style="margin-top: 10px; color: #7f8c8d;">Fetching and validating datasets.</p>
+        <div id="error-box" class="error-msg"></div>
     </div>
 
     <header>
         <h1>RainView Dashboard 🌧️</h1>
-        <button class="reset-btn" onclick="resetAll()">Reset All Filters</button>
+        <button class="reset-btn" onclick="resetAll()">Reset Filters</button>
     </header>
 
     <main class="container">
@@ -101,8 +70,8 @@
 
         <div class="panel">
             <div class="panel-header">
-                <h2>Gauge Locations & Rain Amount</h2>
-                <span class="help-text">Click a bubble to filter the dashboard by that gauge.</span>
+                <h2>Gauge Locations</h2>
+                <span class="help-text">Click a bubble to filter by gauge. Darker circles = more rain.</span>
             </div>
             <div id="map"></div>
         </div>
@@ -110,7 +79,6 @@
         <div class="panel">
             <div class="panel-header">
                 <h2>Total Rainfall Trend</h2>
-                <span class="help-text">Reflects global totals or your selected gauge.</span>
             </div>
             <div id="gauge-history-chart" class="chart-container"></div>
         </div>
@@ -123,33 +91,121 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/dc/4.2.7/dc.min.js"></script>
 
     <script>
-        // --- Globals ---
-        let gaugesMeta = {}; // Quick lookup for map rendering { id: {name, lat, lon} }
-        let map;
-        let markersLayer;
-        let ndx; // Crossfilter instance
-        let mapClickDim; // Dimension dedicated to clicking markers
+        let gaugesMeta = {}; 
+        let map, markersLayer, ndx, mapClickDim;
 
-        // Color scale for rain
+        function showError(title, msg) {
+            document.getElementById('loading-title').innerText = title;
+            document.getElementById('loading-desc').innerText = "";
+            document.getElementById('error-box').innerHTML = msg;
+        }
+
+        async function fetchFile(filename) {
+            const res = await fetch(filename);
+            if (!res.ok) throw new Error(`Failed to load ${filename}. Status: ${res.status}`);
+            return res.text();
+        }
+
+        async function init() {
+            // 1. Check for local file protocol issue early
+            if (window.location.protocol === 'file:') {
+                showError("Local Server Required", "Browsers block data loading from file:// URLs.<br><br>Please run a local web server (e.g., <code>python -m http.server</code>) or host via GitHub Pages.");
+                return;
+            }
+
+            try {
+                const [gaugesCsv, revsCsv, readingsCsv] = await Promise.all([
+                    fetchFile('gauges.csv'),
+                    fetchFile('gauge_revisions.csv'),
+                    fetchFile('monthly_readings.csv')
+                ]);
+
+                // PapaParse string parsing
+                const pGauges = Papa.parse(gaugesCsv, { header: true, skipEmptyLines: true }).data;
+                const pRevs = Papa.parse(revsCsv, { header: true, skipEmptyLines: true }).data;
+                const pReadings = Papa.parse(readingsCsv, { header: true, skipEmptyLines: true }).data;
+
+                processData(pGauges, pRevs, pReadings);
+                
+                document.getElementById('loading').style.display = 'none';
+                
+                initMap();
+                initDashboard();
+            } catch (err) {
+                console.error(err);
+                showError("Data Initialization Failed", err.message || "Ensure gauges.csv, gauge_revisions.csv, and monthly_readings.csv are in the same folder.");
+            }
+        }
+
+        function processData(gData, rData, rdData) {
+            // Validate gauges
+            gData.forEach(g => {
+                if(g.gauge_id) gaugesMeta[g.gauge_id] = { id: g.gauge_id, name: g.name, lat: null, lon: null };
+            });
+
+            // Optimize Revision sorting (prevents browser freeze from creating thousands of Date objects)
+            rData.forEach(r => r._ts = r.created_date ? new Date(r.created_date).getTime() : 0);
+            rData.sort((a, b) => b._ts - a._ts);
+            
+            rData.forEach(r => {
+                if (r.gauge_id && gaugesMeta[r.gauge_id] && gaugesMeta[r.gauge_id].lat === null) {
+                    gaugesMeta[r.gauge_id].lat = parseFloat(r.latitude);
+                    gaugesMeta[r.gauge_id].lon = parseFloat(r.longitude);
+                }
+            });
+
+            const flatReadings = [];
+            rdData.forEach(rd => {
+                if (!rd.reading_date || !rd.gauge_id) return;
+                
+                const amount = parseFloat(rd.rain_amount);
+                if (isNaN(amount) || !gaugesMeta[rd.gauge_id]) return;
+
+                // Safely parse date to avoid D3 NaN freezes
+                const parts = rd.reading_date.split('-');
+                if(parts.length < 2) return;
+
+                const y = parseInt(parts[0], 10);
+                const m = parseInt(parts[1], 10) - 1; 
+
+                if (isNaN(y) || isNaN(m)) return;
+                
+                flatReadings.push({
+                    gauge_id: rd.gauge_id,
+                    date: new Date(y, m, 1),
+                    rain: amount
+                });
+            });
+
+            if (flatReadings.length === 0) {
+                throw new Error("No valid, properly formatted reading dates found to chart.");
+            }
+
+            ndx = crossfilter(flatReadings);
+        }
+
+        function initMap() {
+            // preferCanvas: true is CRITICAL to prevent Leaflet from freezing with thousands of markers
+            map = L.map('map', { preferCanvas: true }).setView([33.45, -112.07], 6);
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap'
+            }).addTo(map);
+            markersLayer = L.layerGroup().addTo(map);
+        }
+
         function getRainColor(amount) {
             if (!amount || amount === 0) return '#bdc3c7';
             if (amount <= 0.5) return '#81ecec';
             if (amount <= 1.5) return '#00cec9';
             if (amount <= 3.0) return '#74b9ff';
-            if (amount <= 5.0) return '#0984e3';
-            return '#2980b9';
+            return '#0984e3';
         }
 
-        async function init() {
-            try {
-                const [gaugesCsv, revsCsv, readingsCsv] = await Promise.all([
-                    fetch('gauges.csv').then(r => r.text()),
-                    fetch('gauge_revisions.csv').then(r => r.text()),
-                    fetch('monthly_readings.csv').then(r => r.text())
-                ]);
+        function initDashboard() {
+            const dateDim = ndx.dimension(d => d.date);
+            const gaugeDim = ndx.dimension(d => d.gauge_id);
+            mapClickDim = ndx.dimension(d => d.gauge_id);
 
-                const pGauges = Papa.parse(gaugesCsv, { header: true, skipEmptyLines: true }).data;
-                const pRevs = Papa.parse(revsCsv, { header: true, skipEmptyLines: true }).data;
-                const pReadings = Papa.parse(readingsCsv, { header: true, skipEmptyLines: true }).data;
-
-                processData(pG
+            const avgRainByMonthGroup = dateDim.group().reduce(
+                (p, v) => { p.count++; p.sum += v.rain; p.avg = p.sum / p.count; return p; },
+                (p, v) => { p.count--; p.sum -= v.rain; p.avg = p.count ? p.sum / p.count : 0; return
