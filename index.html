@@ -35,4 +35,539 @@
             font-family: 'Inter', sans-serif;
             background-color: var(--bg-color);
             color: var(--text-main);
-            line-height: 1.
+            line-height: 1.6;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+
+        header {
+            background-color: var(--surface);
+            padding: 20px 30px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        header h1 {
+            color: var(--primary-dark);
+            font-size: 1.8rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .container {
+            display: flex;
+            gap: 20px;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .left-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 0;
+        }
+
+        .right-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: var(--surface);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            min-width: 0;
+        }
+
+        .card {
+            background-color: var(--surface);
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-container {
+            flex: 1;
+            position: relative;
+            min-height: 250px;
+        }
+
+        #map {
+            flex: 1;
+            border-radius: var(--border-radius);
+            z-index: 1;
+        }
+
+        .controls {
+            margin-bottom: 15px;
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        select, button {
+            padding: 10px 15px;
+            border: 1px solid var(--border);
+            border-radius: var(--border-radius);
+            background-color: var(--surface);
+            font-family: inherit;
+            font-size: 1rem;
+            color: var(--text-main);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            font-weight: 500;
+        }
+
+        button:hover {
+            background-color: var(--primary-dark);
+            box-shadow: var(--shadow-hover);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.9);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.5rem;
+            color: var(--primary-dark);
+        }
+
+        .spinner {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--primary);
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        h2 {
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+            color: var(--text-main);
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 10px;
+        }
+
+        /* Accessible visually hidden class */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border-width: 0;
+        }
+
+        @media (max-width: 900px) {
+            .container {
+                flex-direction: column;
+            }
+            .left-panel, .right-panel {
+                flex: none;
+                height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading data from CSV files...</div>
+    </div>
+
+    <header>
+        <h1>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 16.2A4.5 4.5 0 0 0 17.5 8h-1.8A7 7 0 1 0 4 14.9"></path>
+                <path d="M16 14v6"></path>
+                <path d="M8 14v6"></path>
+                <path d="M12 16v6"></path>
+            </svg>
+            RainView
+        </h1>
+        <div class="controls">
+            <label for="month-select" class="sr-only">Select Month</label>
+            <select id="month-select">
+                <option value="all">All Time History</option>
+                </select>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="left-panel">
+            <div class="card" style="flex: 1;">
+                <h2>Overall Average Monthly Rain</h2>
+                <div class="chart-container">
+                    <canvas id="overallChart"></canvas>
+                </div>
+            </div>
+            <div class="card" style="flex: 1;">
+                <h2 id="gauge-detail-title">Select a Gauge on the Map</h2>
+                <div class="chart-container">
+                    <canvas id="gaugeChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-panel">
+            <h2>Gauge Map & Rain Amounts</h2>
+            <div id="map"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <script>
+        // State management
+        const state = {
+            gauges: new Map(), // gauge_id -> gauge info
+            readings: [],
+            months: new Set(),
+            selectedMonth: 'all',
+            selectedGauge: null,
+            mapMarkers: []
+        };
+
+        // Chart instances
+        let overallChartInstance = null;
+        let gaugeChartInstance = null;
+        let map = null;
+
+        // Initialize App
+        async function init() {
+            try {
+                updateLoadingText("Loading Gauges...");
+                const gaugesData = await fetchCSV('gauges.csv');
+                
+                updateLoadingText("Loading Gauge Revisions...");
+                const revisionsData = await fetchCSV('gauge_revisions.csv');
+                
+                updateLoadingText("Loading Monthly Readings...");
+                const readingsData = await fetchCSV('monthly_readings.csv');
+
+                processData(gaugesData, revisionsData, readingsData);
+                
+                initMap();
+                populateMonthSelect();
+                renderOverallChart();
+                renderMap();
+
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error("Error loading data:", error);
+                document.getElementById('loading-text').innerText = "Error loading data. Make sure gauges.csv, gauge_revisions.csv, and monthly_readings.csv are available on the server.";
+                document.querySelector('.spinner').style.display = 'none';
+            }
+        }
+
+        // Fetch wrapper using PapaParse
+        function fetchCSV(filename) {
+            return new Promise((resolve, reject) => {
+                Papa.parse(filename, {
+                    download: true,
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        resolve(results.data);
+                    },
+                    error: function(error) {
+                        reject(error);
+                    }
+                });
+            });
+        }
+
+        function updateLoadingText(text) {
+            document.getElementById('loading-text').innerText = text;
+        }
+
+        // Process and normalize data
+        function processData(gauges, revisions, readings) {
+            // Map gauges
+            gauges.forEach(g => {
+                state.gauges.set(g.gauge_id, {
+                    id: g.gauge_id,
+                    name: g.name,
+                    status: g.status,
+                    lat: null,
+                    lng: null,
+                    history: []
+                });
+            });
+
+            // Apply latest revisions to get locations
+            revisions.sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+            revisions.forEach(rev => {
+                if (state.gauges.has(rev.gauge_id) && rev.latitude && rev.longitude) {
+                    let g = state.gauges.get(rev.gauge_id);
+                    g.lat = rev.latitude;
+                    g.lng = rev.longitude;
+                }
+            });
+
+            // Process readings
+            readings.forEach(r => {
+                if (!r.reading_date || r.rain_amount === null || r.rain_amount === undefined) return;
+                
+                const dateStr = r.reading_date.substring(0, 7); // YYYY-MM
+                state.months.add(dateStr);
+                
+                const readingObj = {
+                    gauge_id: r.gauge_id,
+                    month: dateStr,
+                    amount: parseFloat(r.rain_amount)
+                };
+                
+                state.readings.push(readingObj);
+
+                if (state.gauges.has(r.gauge_id)) {
+                    state.gauges.get(r.gauge_id).history.push(readingObj);
+                }
+            });
+
+            // Remove gauges without locations or data
+            for (let [id, g] of state.gauges.entries()) {
+                if (!g.lat || !g.lng || g.history.length === 0) {
+                    state.gauges.delete(id);
+                }
+            }
+        }
+
+        // Setup Leaflet Map
+        function initMap() {
+            // Default center roughly on Arizona (based on typical Rainlog data)
+            map = L.map('map').setView([32.2226, -110.9747], 8);
+            
+            // CartoDB Positron base map (cool flat style)
+            L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+                attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+                subdomains: 'abcd',
+                maxZoom: 19
+            }).addTo(map);
+
+            // Fit bounds to actual data if available
+            if(state.gauges.size > 0) {
+                const bounds = L.latLngBounds(Array.from(state.gauges.values()).map(g => [g.lat, g.lng]));
+                map.fitBounds(bounds, { padding: [20, 20], maxZoom: 12 });
+            }
+        }
+
+        function populateMonthSelect() {
+            const select = document.getElementById('month-select');
+            const sortedMonths = Array.from(state.months).sort((a, b) => b.localeCompare(a)); // Descending
+            
+            sortedMonths.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m;
+                option.textContent = m;
+                select.appendChild(option);
+            });
+
+            select.addEventListener('change', (e) => {
+                state.selectedMonth = e.target.value;
+                renderMap();
+            });
+        }
+
+        // Render Overall Average Rain Chart
+        function renderOverallChart() {
+            const monthlySums = {};
+            const monthlyCounts = {};
+
+            state.readings.forEach(r => {
+                if (!monthlySums[r.month]) {
+                    monthlySums[r.month] = 0;
+                    monthlyCounts[r.month] = 0;
+                }
+                monthlySums[r.month] += r.amount;
+                monthlyCounts[r.month] += 1;
+            });
+
+            const sortedMonths = Object.keys(monthlySums).sort();
+            const averages = sortedMonths.map(m => monthlySums[m] / monthlyCounts[m]);
+
+            const ctx = document.getElementById('overallChart').getContext('2d');
+            
+            overallChartInstance = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: sortedMonths,
+                    datasets: [{
+                        label: 'Average Rain (inches)',
+                        data: averages,
+                        backgroundColor: '#3498db',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Rain Amount' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Month' }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Determine color based on rain amount (Cool color scale)
+        function getColor(rainAmount) {
+            return rainAmount > 4 ? '#08306b' :
+                   rainAmount > 3 ? '#2879b9' :
+                   rainAmount > 2 ? '#4eb3d3' :
+                   rainAmount > 1 ? '#7bccc4' :
+                   rainAmount > 0.1 ? '#a8ddb5' :
+                   '#ccebc5';
+        }
+
+        // Render Map markers
+        function renderMap() {
+            // Clear existing markers
+            state.mapMarkers.forEach(m => map.removeLayer(m));
+            state.mapMarkers = [];
+
+            const isAllTime = state.selectedMonth === 'all';
+
+            state.gauges.forEach(g => {
+                let displayAmount = 0;
+                let hasDataForMonth = false;
+
+                if (!isAllTime) {
+                    const monthReading = g.history.find(h => h.month === state.selectedMonth);
+                    if (monthReading) {
+                        displayAmount = monthReading.amount;
+                        hasDataForMonth = true;
+                    }
+                }
+
+                // If specific month is selected and gauge has no data, skip or show small gray
+                if (!isAllTime && !hasDataForMonth) return;
+
+                const radius = isAllTime ? 5 : Math.max(5, Math.min(15, displayAmount * 3 + 5));
+                const color = isAllTime ? '#3498db' : getColor(displayAmount);
+
+                const marker = L.circleMarker([g.lat, g.lng], {
+                    radius: radius,
+                    fillColor: color,
+                    color: '#fff',
+                    weight: 1,
+                    opacity: 1,
+                    fillOpacity: 0.8
+                });
+
+                const tooltipContent = isAllTime 
+                    ? `<b>${g.name}</b><br>Click to view history`
+                    : `<b>${g.name}</b><br>Rain: ${displayAmount.toFixed(2)}"`;
+
+                marker.bindTooltip(tooltipContent);
+                
+                marker.on('click', () => {
+                    selectGauge(g.id);
+                });
+
+                marker.addTo(map);
+                state.mapMarkers.push(marker);
+            });
+        }
+
+        // Handle gauge selection
+        function selectGauge(id) {
+            const gauge = state.gauges.get(id);
+            if (!gauge) return;
+
+            state.selectedGauge = id;
+            document.getElementById('gauge-detail-title').innerText = `History: ${gauge.name}`;
+
+            const sortedHistory = gauge.history.sort((a, b) => a.month.localeCompare(b.month));
+            const labels = sortedHistory.map(h => h.month);
+            const data = sortedHistory.map(h => h.amount);
+
+            if (gaugeChartInstance) {
+                gaugeChartInstance.destroy();
+            }
+
+            const ctx = document.getElementById('gaugeChart').getContext('2d');
+            gaugeChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Rainfall (inches)',
+                        data: data,
+                        borderColor: '#2ecc71',
+                        backgroundColor: 'rgba(46, 204, 113, 0.2)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#2ecc71'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        // Run application
+        window.addEventListener('DOMContentLoaded', init);
+
+    </script>
+</body>
+</html>
